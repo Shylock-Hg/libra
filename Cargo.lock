@@ -24,10 +24,10 @@ dependencies = [
  "heck",
  "log",
  "move-core-types",
+ "move-model",
  "move-prover",
  "move-prover-test-utils",
  "serde",
- "spec-lang",
 ]
 
 [[package]]
@@ -199,7 +199,7 @@ checksum = "8d3a45e77e34375a7923b1e8febb049bb011f064714a8e17a1a616fef01da13d"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -520,9 +520,9 @@ dependencies = [
  "itertools 0.9.0",
  "log",
  "move-core-types",
+ "move-model",
  "move-prover-test-utils",
  "num 0.3.1",
- "spec-lang",
  "vm",
 ]
 
@@ -1406,7 +1406,7 @@ dependencies = [
  "diem-workspace-hack",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -1747,7 +1747,7 @@ dependencies = [
  "diem-workspace-hack",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -2303,7 +2303,7 @@ dependencies = [
  "serde",
  "sha-1 0.9.2",
  "subtle",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -2504,13 +2504,13 @@ dependencies = [
  "diem-workspace-hack",
  "itertools 0.9.0",
  "log",
+ "move-model",
  "move-prover",
  "move-prover-test-utils",
  "num 0.3.1",
  "once_cell",
  "regex",
  "serde",
- "spec-lang",
 ]
 
 [[package]]
@@ -2587,7 +2587,7 @@ dependencies = [
  "once_cell",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -2637,9 +2637,9 @@ dependencies = [
  "diem-workspace-hack",
  "log",
  "move-core-types",
+ "move-model",
  "move-prover",
  "serde",
- "spec-lang",
 ]
 
 [[package]]
@@ -2983,7 +2983,7 @@ dependencies = [
  "proc-macro-hack",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -3139,10 +3139,11 @@ dependencies = [
 
 [[package]]
 name = "ghash"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6e27f0689a6e15944bdce7e45425efb87eaa8ab0c6e87f11d0987a9133e2531"
+checksum = "97304e4cd182c3846f7575ced3890c53012ce534ad9114046b0a9e00bb30a375"
 dependencies = [
+ "opaque-debug 0.3.0",
  "polyval",
 ]
 
@@ -3469,7 +3470,7 @@ dependencies = [
  "proc-macro-hack",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -4211,6 +4212,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "move-model"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytecode-source-map",
+ "bytecode-verifier",
+ "codespan",
+ "codespan-reporting",
+ "datatest-stable",
+ "diem-types",
+ "diem-workspace-hack",
+ "itertools 0.9.0",
+ "log",
+ "move-core-types",
+ "move-ir-types",
+ "move-lang",
+ "move-prover-test-utils",
+ "num 0.3.1",
+ "once_cell",
+ "regex",
+ "serde",
+ "vm",
+]
+
+[[package]]
 name = "move-prover"
 version = "0.1.0"
 dependencies = [
@@ -4235,6 +4261,7 @@ dependencies = [
  "log",
  "move-ir-types",
  "move-lang",
+ "move-model",
  "move-prover-test-utils",
  "num 0.3.1",
  "once_cell",
@@ -4245,7 +4272,6 @@ dependencies = [
  "serde_json",
  "shell-words",
  "simplelog",
- "spec-lang",
  "tokio 0.2.22",
  "toml",
  "vm",
@@ -4623,7 +4649,7 @@ checksum = "876a53fff98e03a936a674b29568b0e605f06b29372c2489ff4de23f1949743d"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -4687,7 +4713,7 @@ dependencies = [
  "diem-workspace-hack",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -4876,7 +4902,7 @@ dependencies = [
  "pest_meta",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -4926,7 +4952,7 @@ checksum = "65ad2ae56b6abe3a1ee25f15ee605bacadb9a764edaba9c2bf4103800d4a1895"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -4937,7 +4963,7 @@ checksum = "f8e8d2bf0b23038a4424865103a4df472855692821aab4e4f5c3312d461d9e5f"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -4978,11 +5004,12 @@ dependencies = [
 
 [[package]]
 name = "polyval"
-version = "0.4.3"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4fd92d8e0c06d08525d2e2643cc2b5c80c69ae8eb12c18272d501cd7079ccc0"
+checksum = "eebcc4aa140b9abd2bc40d9c3f7ccec842679cd79045ac3a7ac698c1a064b7cd"
 dependencies = [
  "cpuid-bool 0.2.0",
+ "opaque-debug 0.3.0",
  "universal-hash",
 ]
 
@@ -5036,7 +5063,7 @@ dependencies = [
  "proc-macro-error-attr",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
  "version_check",
 ]
 
@@ -5164,7 +5191,7 @@ dependencies = [
  "itertools 0.9.0",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -5486,7 +5513,7 @@ checksum = "0c523ccaed8ac4b0288948849a350b37d3035827413c458b6a40ddb614bb4f72"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -5543,7 +5570,7 @@ checksum = "475e68978dc5b743f2f40d8e0a8fdc83f1c5e78cbf4b8fa5e74e73beebc340de"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -6081,7 +6108,7 @@ checksum = "c84d3526699cd55261af4b941e4e725444df67aa4f9e6a3564f18030d12672df"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -6151,7 +6178,7 @@ checksum = "b2acd6defeddb41eb60bb468f8825d0cfd0c2a76bc03bfd235b6a1dc4f6a1ad5"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -6366,31 +6393,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spec-lang"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytecode-source-map",
- "bytecode-verifier",
- "codespan",
- "codespan-reporting",
- "datatest-stable",
- "diem-types",
- "diem-workspace-hack",
- "itertools 0.9.0",
- "log",
- "move-core-types",
- "move-ir-types",
- "move-lang",
- "move-prover-test-utils",
- "num 0.3.1",
- "once_cell",
- "regex",
- "serde",
- "vm",
-]
-
-[[package]]
 name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6518,7 +6520,7 @@ dependencies = [
  "quote 1.0.8",
  "serde",
  "serde_derive",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -6534,7 +6536,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "sha1",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -6650,7 +6652,7 @@ dependencies = [
  "proc-macro-error",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -6705,9 +6707,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.55"
+version = "1.0.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a571a711dddd09019ccc628e1b17fe87c59b09d513c06c026877aa708334f37a"
+checksum = "a9802ddde94170d186eeee5005b798d9c159fa970403f1be19976d0cfb939b72"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
@@ -6722,7 +6724,7 @@ checksum = "b834f2d66f734cb897113e34aaff2f1ab4719ca946f9a7358dba8f8064148701"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
  "unicode-xid 0.2.1",
 ]
 
@@ -6870,7 +6872,7 @@ checksum = "9ba20f23e85b10754cd195504aebf6a27e2e6cbe28c17778a0c930724628dd56"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -6928,7 +6930,7 @@ dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
  "standback",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -7033,7 +7035,7 @@ checksum = "e44da00bfc73a25f814cd8d7e57a68a5c31b74b3152a0a1d1f590c97ed06265a"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
 ]
 
 [[package]]
@@ -7559,7 +7561,7 @@ dependencies = [
  "log",
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
  "wasm-bindgen-shared",
 ]
 
@@ -7593,7 +7595,7 @@ checksum = "b5a48c72f299d80557c7c62e37e7225369ecc0c963964059509fbafe917c7549"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
@@ -7807,6 +7809,6 @@ checksum = "c3f369ddb18862aba61aa49bf31e74d29f0f162dec753063200e1dc084345d16"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.8",
- "syn 1.0.55",
+ "syn 1.0.56",
  "synstructure",
 ]
