@@ -267,7 +267,7 @@ dependencies = [
  "executor-types",
  "futures 0.3.8",
  "hex",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "num_cpus",
  "once_cell",
  "pin-project 1.0.2",
@@ -517,7 +517,7 @@ dependencies = [
  "diem-types",
  "diem-workspace-hack",
  "ir-to-bytecode",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "log",
  "move-core-types",
  "move-model",
@@ -806,7 +806,7 @@ dependencies = [
  "futures 0.3.8",
  "generate-key",
  "hex",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "k8s-openapi",
  "kube",
  "network",
@@ -939,7 +939,7 @@ dependencies = [
  "executor-types",
  "fail",
  "futures 0.3.8",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "mirai-annotations",
  "network",
  "num-derive",
@@ -1812,7 +1812,7 @@ dependencies = [
  "diem-workspace-hack",
  "fail",
  "futures 0.3.8",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "mirai-annotations",
  "netcore",
  "network",
@@ -2185,7 +2185,7 @@ dependencies = [
  "diem-proptest-helpers",
  "diem-workspace-hack",
  "hex",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "mirai-annotations",
  "move-core-types",
  "once_cell",
@@ -2292,7 +2292,7 @@ dependencies = [
  "bytes 0.5.6",
  "cc",
  "chrono",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "itoa",
  "log",
  "memchr",
@@ -2353,7 +2353,7 @@ dependencies = [
  "diem-temppath",
  "diem-types",
  "diem-workspace-hack",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "num-derive",
  "num-traits",
  "num-variants",
@@ -2502,7 +2502,7 @@ dependencies = [
  "datatest-stable",
  "diem-temppath",
  "diem-workspace-hack",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "log",
  "move-model",
  "move-prover",
@@ -2697,7 +2697,7 @@ dependencies = [
  "executor-test-helpers",
  "executor-types",
  "fail",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "move-core-types",
  "once_cell",
  "proptest",
@@ -2725,7 +2725,7 @@ dependencies = [
  "diemdb",
  "executor",
  "executor-types",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "rand 0.7.3",
  "rayon",
  "storage-client",
@@ -2901,7 +2901,7 @@ dependencies = [
  "diem-workspace-hack",
  "difference",
  "hex",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "language-e2e-tests",
  "mirai-annotations",
  "move-core-types",
@@ -3139,10 +3139,11 @@ dependencies = [
 
 [[package]]
 name = "ghash"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6e27f0689a6e15944bdce7e45425efb87eaa8ab0c6e87f11d0987a9133e2531"
+checksum = "97304e4cd182c3846f7575ced3890c53012ce534ad9114046b0a9e00bb30a375"
 dependencies = [
+ "opaque-debug 0.3.0",
  "polyval",
 ]
 
@@ -3244,9 +3245,9 @@ checksum = "d36fab90f82edc3c747f9d438e06cf0a491055896f2a279638bb5beed6c40177"
 
 [[package]]
 name = "handlebars"
-version = "3.5.1"
+version = "3.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2764f9796c0ddca4b82c07f25dd2cb3db30b9a8f47940e78e1c883d9e95c3db9"
+checksum = "964d0e99a61fe9b1b347389b77ebf8b7e1587b70293676aaca7d27e59b9073b2"
 dependencies = [
  "log",
  "pest",
@@ -3610,10 +3611,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "itoa"
-version = "0.4.6"
+name = "itertools"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc6f3ad7b9d11a0c00842ff8de1b60ee58661048eb8049ed33c73594f359d7e6"
+checksum = "37d572918e350e82412fe766d24b15e6682fb2ed2bbe018280caa810397cb319"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itoa"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd25036021b0de88a0aff6b850051563c6516d0bf53f8638938edbb9de732736"
 
 [[package]]
 name = "jemalloc-sys"
@@ -4222,7 +4232,7 @@ dependencies = [
  "datatest-stable",
  "diem-types",
  "diem-workspace-hack",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "log",
  "move-core-types",
  "move-ir-types",
@@ -4256,7 +4266,7 @@ dependencies = [
  "futures 0.3.8",
  "handlebars",
  "hex",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "log",
  "move-ir-types",
  "move-lang",
@@ -4392,9 +4402,9 @@ dependencies = [
 
 [[package]]
 name = "native-tls"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fcc7939b5edc4e4f86b1b4a04bb1498afaaf871b1a6691838ed06fcb48d3a3f"
+checksum = "b8d96b2e1c8da3957d58100b09f102c6d9cfdfced01b7ec5a8974044bb09dbd4"
 dependencies = [
  "lazy_static",
  "libc",
@@ -5003,11 +5013,12 @@ dependencies = [
 
 [[package]]
 name = "polyval"
-version = "0.4.3"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4fd92d8e0c06d08525d2e2643cc2b5c80c69ae8eb12c18272d501cd7079ccc0"
+checksum = "eebcc4aa140b9abd2bc40d9c3f7ccec842679cd79045ac3a7ac698c1a064b7cd"
 dependencies = [
  "cpuid-bool 0.2.0",
+ "opaque-debug 0.3.0",
  "universal-hash",
 ]
 
@@ -5938,7 +5949,7 @@ dependencies = [
  "diem-infallible",
  "diem-types",
  "diem-workspace-hack",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "proptest",
 ]
 
@@ -6433,7 +6444,7 @@ dependencies = [
  "executor-types",
  "fail",
  "futures 0.3.8",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "memsocket",
  "netcore",
  "network",
@@ -6570,7 +6581,7 @@ dependencies = [
  "diem-state-view",
  "diem-types",
  "diem-workspace-hack",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "move-core-types",
  "scratchpad",
  "serde",
@@ -6593,7 +6604,7 @@ dependencies = [
  "diem-workspace-hack",
  "diemdb",
  "futures 0.3.8",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "proptest",
  "rand 0.7.3",
  "storage-client",
@@ -6812,7 +6823,7 @@ dependencies = [
  "diem-workspace-hack",
  "getrandom 0.2.0",
  "hex",
- "itertools 0.9.0",
+ "itertools 0.10.0",
  "language-e2e-tests",
  "mirai-annotations",
  "module-generation",
