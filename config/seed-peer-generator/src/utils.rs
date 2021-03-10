@@ -3,21 +3,29 @@
 
 #![forbid(unsafe_code)]
 
+use std::convert::TryFrom;
+
 use anyhow::Error;
-use diem_config::config::{TrustedPeer, TrustedPeerSet};
+use diem_client::BlockingClient;
+use diem_config::config::{Peer, PeerRole, PeerSet};
 use diem_logger::prelude::*;
-use diem_network_address::NetworkAddress;
-use diem_secure_json_rpc::JsonRpcClient;
 use diem_types::{
-    account_config::diem_root_address, on_chain_config::ValidatorSet,
-    validator_info::ValidatorInfo, PeerId,
+    account_config::diem_root_address, account_state::AccountState,
+    account_state_blob::AccountStateBlob, network_address::NetworkAddress,
+    on_chain_config::ValidatorSet, validator_info::ValidatorInfo, PeerId,
 };
 
 /// Retrieve the Fullnode seed peers from JSON-RPC
-pub fn gen_full_node_seed_peer_config(client_endpoint: String) -> anyhow::Result<TrustedPeerSet> {
+pub fn gen_validator_full_node_seed_peer_config(
+    client_endpoint: String,
+) -> anyhow::Result<PeerSet> {
     let validator_set = get_validator_set(client_endpoint)?;
 
-    gen_trusted_peers(&validator_set, to_fullnode_addresses)
+    gen_seed_peers(
+        &validator_set,
+        PeerRole::ValidatorFullNode,
+        to_fullnode_addresses,
+    )
 }
 
 pub(crate) fn to_fullnode_addresses(
@@ -29,8 +37,17 @@ pub(crate) fn to_fullnode_addresses(
 /// Retrieve the validator set from a JSON RPC endpoint
 fn get_validator_set(client_endpoint: String) -> anyhow::Result<ValidatorSet> {
     let root_account_address = diem_root_address();
-    let json_rpc = JsonRpcClient::new(client_endpoint);
-    let account_state = json_rpc.get_account_state(root_account_address, None)?;
+    let json_rpc = BlockingClient::new(client_endpoint);
+    let account_state = json_rpc
+        .get_account_state_with_proof(root_account_address, None, None)?
+        .into_inner();
+
+    let blob = account_state
+        .blob
+        .ok_or_else(|| Error::msg("No validator set"))?
+        .into_bytes()?;
+    let account_state_blob = AccountStateBlob::from(bcs::from_bytes::<Vec<u8>>(&blob)?);
+    let account_state = AccountState::try_from(&account_state_blob)?;
     if let Some(val) = account_state.get_validator_set()? {
         Ok(val)
     } else {
@@ -39,17 +56,18 @@ fn get_validator_set(client_endpoint: String) -> anyhow::Result<ValidatorSet> {
 }
 
 // TODO: Merge with OnchainDiscovery
-pub(crate) fn gen_trusted_peers<
+pub(crate) fn gen_seed_peers<
     ToAddresses: Fn(&ValidatorInfo) -> Result<Vec<NetworkAddress>, bcs::Error>,
 >(
     validator_set: &ValidatorSet,
+    role: PeerRole,
     to_addresses: ToAddresses,
-) -> anyhow::Result<TrustedPeerSet> {
+) -> anyhow::Result<PeerSet> {
     let set = validator_set
         .payload()
         .iter()
         .filter_map(|validator_info| {
-            to_seed_peer(validator_info, &to_addresses).map_or_else(
+            to_seed_peer(validator_info, role, &to_addresses).map_or_else(
                 |error| {
                     warn!(
                         "Unable to generate seed for validator {} {}",
@@ -61,7 +79,7 @@ pub(crate) fn gen_trusted_peers<
                 Some,
             )
         })
-        .collect::<TrustedPeerSet>();
+        .collect::<PeerSet>();
 
     if set.is_empty() {
         Err(Error::msg("No seed peers were generated"))
@@ -73,23 +91,20 @@ pub(crate) fn gen_trusted_peers<
 /// Convert ValidatorInfo to a seed peer
 fn to_seed_peer<T: Fn(&ValidatorInfo) -> Result<Vec<NetworkAddress>, bcs::Error>>(
     validator_info: &ValidatorInfo,
+    role: PeerRole,
     to_addresses: &T,
-) -> Result<(PeerId, TrustedPeer), bcs::Error> {
+) -> Result<(PeerId, Peer), bcs::Error> {
     let peer_id = *validator_info.account_address();
     let addrs = to_addresses(validator_info)?;
-    Ok((peer_id, TrustedPeer::from(addrs)))
+    Ok((peer_id, Peer::from_addrs(role, addrs)))
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::{gen_trusted_peers, to_fullnode_addresses};
-    use diem_config::config::{TrustedPeer, TrustedPeerSet, HANDSHAKE_VERSION};
+    use super::*;
+    use diem_config::config::HANDSHAKE_VERSION;
     use diem_crypto::{ed25519::Ed25519PrivateKey, x25519, PrivateKey as PK, Uniform};
-    use diem_network_address::NetworkAddress;
-    use diem_types::{
-        on_chain_config::ValidatorSet, validator_config::ValidatorConfig,
-        validator_info::ValidatorInfo, PeerId,
-    };
+    use diem_types::validator_config::ValidatorConfig;
     use rand::{prelude::StdRng, SeedableRng};
 
     fn validator_set(
@@ -122,14 +137,15 @@ mod tests {
     }
 
     #[test]
-    fn fullnode_test() {
+    fn validator_fullnode_test() {
+        let role = PeerRole::ValidatorFullNode;
         let peer_id = PeerId::random();
         let fullnode_addresses = generate_network_addresses(3);
         let validator_set = validator_set(peer_id, &fullnode_addresses);
-        let result = gen_trusted_peers(&validator_set, to_fullnode_addresses).unwrap();
+        let result = gen_seed_peers(&validator_set, role, to_fullnode_addresses).unwrap();
 
-        let mut expected_trusted_peers = TrustedPeerSet::new();
-        expected_trusted_peers.insert(peer_id, TrustedPeer::from(fullnode_addresses));
-        assert_eq!(expected_trusted_peers, result);
+        let mut expected_peers = PeerSet::new();
+        expected_peers.insert(peer_id, Peer::from_addrs(role, fullnode_addresses));
+        assert_eq!(expected_peers, result);
     }
 }

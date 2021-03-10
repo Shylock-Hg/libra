@@ -90,10 +90,21 @@ pub enum Error {
     UnknownError(String),
 }
 
-#[cfg(test)]
 impl From<anyhow::Error> for Error {
     fn from(error: anyhow::Error) -> Self {
         Error::UnknownError(format!("{}", error))
+    }
+}
+
+impl From<diem_client::Error> for Error {
+    fn from(error: diem_client::Error) -> Self {
+        Error::UnknownError(format!("Client error: {}", error))
+    }
+}
+
+impl From<bcs::Error> for Error {
+    fn from(error: bcs::Error) -> Self {
+        Error::UnknownError(format!("BCS error: {}", error))
     }
 }
 
@@ -388,7 +399,7 @@ pub fn build_rotation_transaction(
     chain_id: ChainId,
 ) -> RawTransaction {
     let script =
-        transaction_builder_generated::stdlib::encode_set_validator_config_and_reconfigure_script(
+        diem_transaction_builder::stdlib::encode_set_validator_config_and_reconfigure_script(
             owner_address,
             consensus_key.to_bytes().to_vec(),
             network_addresses,

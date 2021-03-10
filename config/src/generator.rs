@@ -6,7 +6,7 @@
 
 use crate::{
     config::{
-        DiscoveryMethod, NetworkConfig, NodeConfig, TestConfig, TrustedPeer, TrustedPeerSet,
+        DiscoveryMethod, NetworkConfig, NodeConfig, Peer, PeerRole, PeerSet, TestConfig,
         HANDSHAKE_VERSION,
     },
     network_id::NetworkId,
@@ -54,15 +54,28 @@ pub fn validator_swarm(
 }
 
 pub fn validator_swarm_for_testing(nodes: usize) -> ValidatorSwarm {
-    let mut config = NodeConfig::default();
-    config.test = Some(TestConfig::open_module());
-    validator_swarm(&NodeConfig::default(), nodes, [1u8; 32], true)
+    let config = NodeConfig {
+        test: Some(TestConfig::open_module()),
+        ..Default::default()
+    };
+    validator_swarm(&config, nodes, [1u8; 32], true)
 }
 
-/// Convenience function that builds a `TrustedPeerSet` containing a single peer for testing
+/// Convenience function that builds a `PeerSet` containing a single peer for testing
 /// with a fully formatted `NetworkAddress` containing its network identity pubkey
 /// and handshake protocol version.
-pub fn build_seed_for_network(seed_config: &NetworkConfig) -> TrustedPeerSet {
+pub fn build_seed_for_network(seed_config: &NetworkConfig) -> PeerSet {
+    let seed_role = match &seed_config.network_id {
+        NetworkId::Validator => PeerRole::Validator,
+        network_id => {
+            if network_id.is_vfn_network() {
+                PeerRole::ValidatorFullNode
+            } else {
+                PeerRole::Upstream
+            }
+        }
+    };
+
     let seed_pubkey = diem_crypto::PrivateKey::public_key(&seed_config.identity_key());
     let seed_addr = seed_config
         .listen_address
@@ -74,7 +87,7 @@ pub fn build_seed_for_network(seed_config: &NetworkConfig) -> TrustedPeerSet {
     let mut seeds = HashMap::default();
     seeds.insert(
         seed_config.peer_id(),
-        TrustedPeer::new(vec![seed_addr], keys),
+        Peer::new(vec![seed_addr], keys, seed_role),
     );
     seeds
 }

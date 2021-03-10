@@ -13,7 +13,7 @@ use crate::{
         VERIFY_COORDINATOR_FAIL_TS, VERIFY_COORDINATOR_START_TS, VERIFY_COORDINATOR_SUCC_TS,
     },
     storage::BackupStorage,
-    utils::{unix_timestamp_sec, GlobalRestoreOptions, RestoreRunMode},
+    utils::{unix_timestamp_sec, GlobalRestoreOptions, RestoreRunMode, TrustedWaypointOpt},
 };
 use anyhow::Result;
 use diem_logger::prelude::*;
@@ -23,16 +23,22 @@ use std::sync::Arc;
 pub struct VerifyCoordinator {
     storage: Arc<dyn BackupStorage>,
     metadata_cache_opt: MetadataCacheOpt,
+    trusted_waypoints_opt: TrustedWaypointOpt,
+    concurrent_downloads: usize,
 }
 
 impl VerifyCoordinator {
     pub fn new(
         storage: Arc<dyn BackupStorage>,
         metadata_cache_opt: MetadataCacheOpt,
+        trusted_waypoints_opt: TrustedWaypointOpt,
+        concurrent_downloads: usize,
     ) -> Result<Self> {
         Ok(Self {
             storage,
             metadata_cache_opt,
+            trusted_waypoints_opt,
+            concurrent_downloads,
         })
     }
 
@@ -57,9 +63,12 @@ impl VerifyCoordinator {
     }
 
     async fn run_impl(self) -> Result<()> {
-        let metadata_view =
-            metadata::cache::sync_and_load(&self.metadata_cache_opt, Arc::clone(&self.storage))
-                .await?;
+        let metadata_view = metadata::cache::sync_and_load(
+            &self.metadata_cache_opt,
+            Arc::clone(&self.storage),
+            self.concurrent_downloads,
+        )
+        .await?;
         let ver_max = Version::max_value();
         let state_snapshot = metadata_view.select_state_snapshot(ver_max)?;
         let transactions = metadata_view.select_transaction_backups(ver_max)?;
@@ -67,8 +76,9 @@ impl VerifyCoordinator {
 
         let global_opt = GlobalRestoreOptions {
             target_version: ver_max,
-            trusted_waypoints: Default::default(),
+            trusted_waypoints: Arc::new(self.trusted_waypoints_opt.verify()?),
             run_mode: Arc::new(RestoreRunMode::Verify),
+            concurrent_downloads: self.concurrent_downloads,
         };
 
         let epoch_history = Arc::new(

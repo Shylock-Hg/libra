@@ -2,21 +2,23 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    config::{Error, RoleType, SecureBackend},
+    config::{Error, SecureBackend},
     keys::ConfigKey,
     network_id::NetworkId,
     utils,
 };
 use diem_crypto::{x25519, Uniform};
-use diem_network_address::NetworkAddress;
 use diem_network_address_encryption::Encryptor;
 use diem_secure_storage::{CryptoStorage, KVStorage, Storage};
-use diem_types::{transaction::authenticator::AuthenticationKey, PeerId};
+use diem_types::{
+    network_address::NetworkAddress, transaction::authenticator::AuthenticationKey, PeerId,
+};
 use rand::{
     rngs::{OsRng, StdRng},
     Rng, SeedableRng,
 };
 use serde::{Deserialize, Serialize};
+use short_hex_str::AsShortHexStr;
 use std::{
     collections::{HashMap, HashSet},
     convert::TryFrom,
@@ -74,7 +76,7 @@ pub struct NetworkConfig {
     // trusted peers set.  TODO: Replace usage in configs with `seeds` this is for backwards compatibility
     pub seed_addrs: HashMap<PeerId, Vec<NetworkAddress>>,
     // The initial peers to connect to prior to onchain discovery
-    pub seeds: TrustedPeerSet,
+    pub seeds: PeerSet,
     // The maximum size of an inbound or outbound request frame
     pub max_frame_size: usize,
     // Enables proxy protocol on incoming connections to get original source addresses
@@ -111,7 +113,7 @@ impl NetworkConfig {
             network_address_key_backend: None,
             network_id,
             seed_addrs: HashMap::new(),
-            seeds: TrustedPeerSet::default(),
+            seeds: PeerSet::default(),
             max_frame_size: MAX_FRAME_SIZE,
             enable_proxy_protocol: false,
             max_connection_delay_ms: MAX_CONNECTION_DELAY_MS,
@@ -167,18 +169,26 @@ impl NetworkConfig {
         }
     }
 
-    pub fn load(&mut self, role: RoleType) -> Result<(), Error> {
+    /// Per convenience, so that NetworkId isn't needed to be specified for `validator_networks`
+    pub fn load_validator_network(&mut self) -> Result<(), Error> {
+        self.network_id = NetworkId::Validator;
+        self.load()
+    }
+
+    pub fn load_fullnode_network(&mut self) -> Result<(), Error> {
+        if self.network_id.is_validator_network() {
+            return Err(Error::InvariantViolation(format!(
+                "Set {} network for a non-validator network",
+                self.network_id
+            )));
+        }
+        self.load()
+    }
+
+    fn load(&mut self) -> Result<(), Error> {
         if self.listen_address.to_string().is_empty() {
             self.listen_address = utils::get_local_ip()
                 .ok_or_else(|| Error::InvariantViolation("No local IP".to_string()))?;
-        }
-
-        if role == RoleType::Validator {
-            self.network_id = NetworkId::Validator;
-        } else if self.network_id == NetworkId::Validator {
-            return Err(Error::InvariantViolation(
-                "Set NetworkId::Validator network for a non-validator network".to_string(),
-            ));
         }
 
         self.prepare_identity();
@@ -207,11 +217,13 @@ impl NetworkConfig {
             Identity::None => {
                 let mut rng = StdRng::from_seed(OsRng.gen());
                 let key = x25519::PrivateKey::generate(&mut rng);
-                let peer_id = PeerId::from_identity_public_key(key.public_key());
+                let peer_id =
+                    diem_types::account_address::from_identity_public_key(key.public_key());
                 self.identity = Identity::from_config(key, peer_id);
             }
             Identity::FromConfig(config) => {
-                let peer_id = PeerId::from_identity_public_key(config.key.public_key());
+                let peer_id =
+                    diem_types::account_address::from_identity_public_key(config.key.public_key());
                 if config.peer_id == PeerId::ZERO {
                     config.peer_id = peer_id;
                 }
@@ -340,58 +352,86 @@ impl Default for RateLimitConfig {
     }
 }
 
-pub type TrustedPeerSet = HashMap<PeerId, TrustedPeer>;
+pub type PeerSet = HashMap<PeerId, Peer>;
+
+// TODO: Combine with RoleType?
+/// Represents the Role that a peer plays in the network ecosystem rather than the type of node.
+/// Determines how nodes are connected to other nodes, and how discovery views them.
+///
+/// Rules for upstream nodes via Peer Role:
+///
+/// Validator -> Always upstream if not Validator else P2P
+/// PreferredUpstream -> Always upstream, overriding any other discovery
+/// ValidatorFullNode -> Always upstream for incoming connections (including other ValidatorFullNodes)
+/// Upstream -> Upstream, if no ValidatorFullNode or PreferredUpstream.  Useful for initial seed discovery
+/// Downstream -> Downstream, defining a controlled downstream that I always want to connect
+/// Known -> A known peer, but it has no particular role assigned to it
+/// Unknown -> Undiscovered peer, likely due to a non-mutually authenticated connection always downstream
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub enum PeerRole {
+    Validator = 0,
+    PreferredUpstream,
+    ValidatorFullNode,
+    Upstream,
+    Downstream,
+    Known,
+    Unknown,
+}
+
+impl Default for PeerRole {
+    /// Default to least trusted
+    fn default() -> Self {
+        PeerRole::Unknown
+    }
+}
 
 /// Represents a single seed configuration for a seed peer
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
 #[serde(default)]
-pub struct TrustedPeer {
-    pub keys: HashSet<x25519::PublicKey>,
+pub struct Peer {
     pub addresses: Vec<NetworkAddress>,
+    pub keys: HashSet<x25519::PublicKey>,
+    pub role: PeerRole,
 }
 
-impl TrustedPeer {
+impl Peer {
     /// Combines `Vec<NetworkAddress>` keys with the `HashSet` given
     pub fn new(
         addresses: Vec<NetworkAddress>,
         mut keys: HashSet<x25519::PublicKey>,
-    ) -> TrustedPeer {
+        role: PeerRole,
+    ) -> Peer {
         let addr_keys = addresses
             .iter()
             .filter_map(NetworkAddress::find_noise_proto);
         keys.extend(addr_keys);
-        TrustedPeer { addresses, keys }
+        Peer {
+            addresses,
+            keys,
+            role,
+        }
     }
 
-    /// Combines two `TrustedPeer`.  Note: Does not merge duplicate addresses
-    pub fn extend(&mut self, other: TrustedPeer) {
+    /// Combines two `Peer`.  Note: Does not merge duplicate addresses
+    /// TODO: Instead of rejecting, maybe pick one of the roles?
+    pub fn extend(&mut self, other: Peer) -> Result<(), Error> {
+        crate::config::invariant(
+            self.role != other.role,
+            format!(
+                "Roles don't match self {:?} vs other {:?}",
+                self.role, other.role
+            ),
+        )?;
         self.addresses.extend(other.addresses);
         self.keys.extend(other.keys);
+        Ok(())
     }
-}
 
-impl From<Vec<NetworkAddress>> for TrustedPeer {
-    /// Converts a `Vec<NetworkAddress>` to a `TrustedPeer`s by extracting the `x25519::PublicKey`s from the address
-    fn from(addresses: Vec<NetworkAddress>) -> TrustedPeer {
+    pub fn from_addrs(role: PeerRole, addresses: Vec<NetworkAddress>) -> Peer {
         let keys: HashSet<x25519::PublicKey> = addresses
             .iter()
             .filter_map(NetworkAddress::find_noise_proto)
             .collect();
-        TrustedPeer { addresses, keys }
-    }
-}
-
-impl From<NetworkAddress> for TrustedPeer {
-    fn from(address: NetworkAddress) -> TrustedPeer {
-        TrustedPeer::from(vec![address])
-    }
-}
-
-impl From<HashSet<x25519::PublicKey>> for TrustedPeer {
-    fn from(keys: HashSet<x25519::PublicKey>) -> TrustedPeer {
-        TrustedPeer {
-            addresses: Vec::new(),
-            keys,
-        }
+        Peer::new(addresses, keys, role)
     }
 }

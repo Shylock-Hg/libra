@@ -9,15 +9,14 @@ use crate::{
         messaging::v1::{NetworkMessage, NetworkMessageSink},
     },
     testutils::fake_socket::ReadOnlyTestSocketVec,
-    transport::{Connection, ConnectionId, ConnectionMetadata, TrustLevel},
+    transport::{Connection, ConnectionId, ConnectionMetadata},
     ProtocolId,
 };
 use channel::{diem_channel, message_queues::QueueStyle};
-use diem_config::network_id::NetworkContext;
-use diem_network_address::NetworkAddress;
+use diem_config::{config::PeerRole, network_id::NetworkContext};
 use diem_proptest_helpers::ValueGenerator;
 use diem_time_service::TimeService;
-use diem_types::PeerId;
+use diem_types::{network_address::NetworkAddress, PeerId};
 use futures::{executor::block_on, future, io::AsyncReadExt, sink::SinkExt, stream::StreamExt};
 use memsocket::MemorySocket;
 use netcore::transport::ConnectionOrigin;
@@ -95,7 +94,7 @@ pub fn fuzz(data: &[u8]) {
             ]
             .iter(),
         ),
-        TrustLevel::Untrusted,
+        PeerRole::Unknown,
     );
     let connection = Connection { socket, metadata };
 

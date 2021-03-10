@@ -13,6 +13,7 @@ use async_trait::async_trait;
 use diem_config::{config::NodeConfig, network_id::NetworkId};
 use diem_logger::*;
 use diem_mempool::network::{MempoolNetworkEvents, MempoolNetworkSender};
+use diem_time_service::TimeService;
 use diem_types::{account_config::diem_root_address, chain_id::ChainId};
 use futures::{sink::SinkExt, StreamExt};
 use network::{
@@ -120,6 +121,7 @@ impl Experiment for LoadTest {
                     .start_job(EmitJobRequest::for_instances(
                         context.cluster.fullnode_instances().to_vec(),
                         context.global_emit_job_request,
+                        0,
                         0,
                     ))
                     .await?,
@@ -245,7 +247,8 @@ impl StubbedNode {
     async fn launch(node_endpoint: String, runtime_handle: Handle, index: usize) -> Self {
         // generate seed peers config from querying node endpoint
         let seed_peers =
-            seed_peer_generator::utils::gen_full_node_seed_peer_config(node_endpoint).unwrap();
+            seed_peer_generator::utils::gen_validator_full_node_seed_peer_config(node_endpoint)
+                .unwrap();
 
         // build sparse network runner
 
@@ -264,8 +267,12 @@ impl StubbedNode {
             .unwrap();
         assert_eq!(network_config.network_id, NetworkId::Public);
 
-        let mut network_builder =
-            NetworkBuilder::create(ChainId::test(), pfn_config.base.role, network_config);
+        let mut network_builder = NetworkBuilder::create(
+            ChainId::test(),
+            pfn_config.base.role,
+            network_config,
+            TimeService::real(),
+        );
 
         let state_sync_handle = Some(
             network_builder.add_protocol_handler(state_sync::network::network_endpoint_config()),
@@ -306,8 +313,8 @@ async fn mempool_load_test(
     mut events: MempoolNetworkEvents,
 ) -> Result<MempoolStats> {
     let new_peer_event = events.select_next_some().await;
-    let vfn = if let Event::NewPeer(peer_id, _) = new_peer_event {
-        peer_id
+    let vfn = if let Event::NewPeer(metadata) = new_peer_event {
+        metadata.remote_peer_id
     } else {
         return Err(anyhow::format_err!(
             "received unexpected network event for mempool load test"
@@ -400,8 +407,8 @@ async fn state_sync_load_test(
     mut events: StateSyncEvents,
 ) -> Result<StateSyncStats> {
     let new_peer_event = events.select_next_some().await;
-    let vfn = if let Event::NewPeer(peer_id, _) = new_peer_event {
-        peer_id
+    let vfn = if let Event::NewPeer(metadata) = new_peer_event {
+        metadata.remote_peer_id
     } else {
         return Err(anyhow::format_err!(
             "received unexpected network event for state sync load test"
@@ -423,20 +430,18 @@ async fn state_sync_load_test(
     let mut bytes = 0_u64;
     let mut msg_num = 0_u64;
     while Instant::now().duration_since(task_start) < duration {
-        let msg =
-            state_sync::network::StateSyncMessage::GetChunkRequest(Box::new(chunk_request.clone()));
+        use state_sync::network::StateSyncMessage::*;
+
+        let msg = GetChunkRequest(Box::new(chunk_request.clone()));
         bytes += bcs::to_bytes(&msg)?.len() as u64;
         msg_num += 1;
         sender.send_to(vfn, msg)?;
 
         // await response from remote peer
         let response = events.select_next_some().await;
-        if let Event::Message(_remote_peer, payload) = response {
-            if let state_sync::network::StateSyncMessage::GetChunkResponse(chunk_response) = payload
-            {
-                // TODO analyze response and update StateSyncResult with stats accordingly
-                served_txns += chunk_response.txn_list_with_proof.transactions.len() as u64;
-            }
+        if let Event::Message(_remote_peer, GetChunkResponse(chunk_response)) = response {
+            // TODO analyze response and update StateSyncResult with stats accordingly
+            served_txns += chunk_response.txn_list_with_proof.transactions.len() as u64;
         }
     }
     Ok(StateSyncStats {

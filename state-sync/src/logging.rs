@@ -2,10 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    chunk_request::GetChunkRequest, chunk_response::GetChunkResponse,
+    chunk_request::GetChunkRequest, chunk_response::GetChunkResponse, error::Error,
     request_manager::ChunkRequestInfo,
 };
-use anyhow::Error;
 use diem_config::config::PeerNetworkId;
 use diem_logger::Schema;
 use diem_types::{
@@ -100,33 +99,35 @@ pub enum LogEntry {
     SendChunkRequest,
     ProcessChunkRequest,
     ProcessChunkResponse,
+    ProcessChunkMessage,
     NetworkError,
     EpochChange,
     CommitFlow,
     Multicast,
     SubscriptionDeliveryFail,
+    ProgressCheck,
 }
 
 #[derive(Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum LogEvent {
-    Initialize,
+    // Generic events
     CallbackFail,
     Complete,
+    Fail,
+    Initialize,
     Timeout,
     PublishError,
-    Fail,
+    Received,
 
     // SendChunkRequest events
     MissingPeers,
-    OldSyncRequest,
     NetworkSendError,
     Success,
     ChunkRequestInfo,
 
     // ProcessChunkResponse events
-    ConsensusIsRunning,
-    Received,
+    ReceivedChunkWithoutRequest,
     SendChunkRequestFail,
     ApplyChunkSuccess,
     ApplyChunkFail,

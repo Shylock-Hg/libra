@@ -6,14 +6,14 @@
 use crate::builder::NetworkBuilder;
 use channel::message_queues::QueueStyle;
 use diem_config::{
-    config::{RoleType, TrustedPeer, TrustedPeerSet, NETWORK_CHANNEL_SIZE},
+    config::{Peer, PeerRole, PeerSet, RoleType, NETWORK_CHANNEL_SIZE},
     network_id::{NetworkContext, NetworkId},
 };
 use diem_crypto::{test_utils::TEST_SEED, x25519, Uniform};
 use diem_infallible::RwLock;
 use diem_metrics::IntCounterVec;
-use diem_network_address::NetworkAddress;
-use diem_types::{chain_id::ChainId, PeerId};
+use diem_time_service::TimeService;
+use diem_types::{chain_id::ChainId, network_address::NetworkAddress, PeerId};
 use futures::{executor::block_on, StreamExt};
 use netcore::transport::ConnectionOrigin;
 use network::{
@@ -110,6 +110,7 @@ pub struct DummyNetwork {
 /// The following sets up a 2 peer network and verifies connectivity.
 pub fn setup_network() -> DummyNetwork {
     let runtime = Runtime::new().unwrap();
+    let role = RoleType::Validator;
     let network_id = NetworkId::Validator;
     let chain_id = ChainId::default();
     let dialer_peer_id = PeerId::random();
@@ -129,16 +130,19 @@ pub fn setup_network() -> DummyNetwork {
     let listener_addr: NetworkAddress = "/ip4/127.0.0.1/tcp/0".parse().unwrap();
 
     // Setup seed peers
-    let mut seeds = TrustedPeerSet::new();
-    seeds.insert(dialer_peer_id, TrustedPeer::from(dialer_pubkeys));
+    let mut seeds = PeerSet::new();
+    seeds.insert(
+        dialer_peer_id,
+        Peer::new(vec![], dialer_pubkeys, PeerRole::Validator),
+    );
 
     let trusted_peers = Arc::new(RwLock::new(HashMap::new()));
     let authentication_mode = AuthenticationMode::Mutual(listener_identity_private_key);
 
     // Set up the listener network
     let network_context = Arc::new(NetworkContext::new(
+        role,
         network_id.clone(),
-        RoleType::Validator,
         listener_peer_id,
     ));
     let mut network_builder = NetworkBuilder::new_for_test(
@@ -146,6 +150,7 @@ pub fn setup_network() -> DummyNetwork {
         &seeds,
         trusted_peers,
         network_context,
+        TimeService::real(),
         listener_addr,
         authentication_mode,
     );
@@ -156,16 +161,15 @@ pub fn setup_network() -> DummyNetwork {
 
     // Add the listener address with port
     let listener_addr = network_builder.listen_address();
-    seeds.insert(listener_peer_id, TrustedPeer::from(listener_addr));
+    seeds.insert(
+        listener_peer_id,
+        Peer::from_addrs(PeerRole::Validator, vec![listener_addr]),
+    );
 
     let authentication_mode = AuthenticationMode::Mutual(dialer_identity_private_key);
 
     // Set up the dialer network
-    let network_context = Arc::new(NetworkContext::new(
-        network_id,
-        RoleType::Validator,
-        dialer_peer_id,
-    ));
+    let network_context = Arc::new(NetworkContext::new(role, network_id, dialer_peer_id));
 
     let trusted_peers = Arc::new(RwLock::new(HashMap::new()));
 
@@ -174,6 +178,7 @@ pub fn setup_network() -> DummyNetwork {
         &seeds,
         trusted_peers,
         network_context,
+        TimeService::real(),
         dialer_addr,
         authentication_mode,
     );
@@ -184,15 +189,28 @@ pub fn setup_network() -> DummyNetwork {
 
     // Wait for establishing connection
     let first_dialer_event = block_on(dialer_events.next()).unwrap();
-    assert_eq!(
-        first_dialer_event,
-        Event::NewPeer(listener_peer_id, ConnectionOrigin::Outbound)
-    );
+    if let Event::NewPeer(metadata) = first_dialer_event {
+        assert_eq!(metadata.remote_peer_id, listener_peer_id);
+        assert_eq!(metadata.origin, ConnectionOrigin::Outbound);
+        assert_eq!(metadata.role, PeerRole::Validator);
+    } else {
+        panic!(
+            "No NewPeer event on dialer received instead: {:?}",
+            first_dialer_event
+        );
+    }
+
     let first_listener_event = block_on(listener_events.next()).unwrap();
-    assert_eq!(
-        first_listener_event,
-        Event::NewPeer(dialer_peer_id, ConnectionOrigin::Inbound)
-    );
+    if let Event::NewPeer(metadata) = first_listener_event {
+        assert_eq!(metadata.remote_peer_id, dialer_peer_id);
+        assert_eq!(metadata.origin, ConnectionOrigin::Inbound);
+        assert_eq!(metadata.role, PeerRole::Validator);
+    } else {
+        panic!(
+            "No NewPeer event on listener received instead: {:?}",
+            first_listener_event
+        );
+    }
 
     DummyNetwork {
         runtime,

@@ -19,15 +19,14 @@ use crate::{
             },
         },
     },
-    transport::{Connection, ConnectionId, ConnectionMetadata, TrustLevel},
+    transport::{Connection, ConnectionId, ConnectionMetadata},
     ProtocolId,
 };
 use bytes::Bytes;
 use channel::{self, diem_channel, message_queues::QueueStyle};
-use diem_config::network_id::NetworkContext;
-use diem_network_address::NetworkAddress;
+use diem_config::{config::PeerRole, network_id::NetworkContext};
 use diem_time_service::{MockTimeService, TimeService};
-use diem_types::PeerId;
+use diem_types::{network_address::NetworkAddress, PeerId};
 use futures::{
     channel::oneshot,
     future::{self, FutureExt},
@@ -66,7 +65,7 @@ fn build_test_peer(
             origin,
             MessagingProtocolVersion::V1,
             [].iter().into(),
-            TrustLevel::Untrusted,
+            PeerRole::Unknown,
         ),
         socket: a,
     };
@@ -141,11 +140,11 @@ fn build_test_connected_peers(
     )
 }
 
-fn build_network_sink_stream<'a>(
-    connection: &'a mut MemorySocket,
+fn build_network_sink_stream(
+    connection: &mut MemorySocket,
 ) -> (
-    NetworkMessageSink<impl AsyncWrite + 'a>,
-    NetworkMessageStream<impl AsyncRead + 'a>,
+    NetworkMessageSink<impl AsyncWrite + '_>,
+    NetworkMessageStream<impl AsyncRead + '_>,
 ) {
     let (read_half, write_half) = tokio::io::split(connection.compat());
     let sink = NetworkMessageSink::new(write_half.compat_write(), MAX_FRAME_SIZE, None);
@@ -159,8 +158,8 @@ async fn assert_disconnected_event(
     connection_notifs_rx: &mut channel::Receiver<TransportNotification<MemorySocket>>,
 ) {
     match connection_notifs_rx.next().await {
-        Some(TransportNotification::Disconnected(conn_info, actual_reason)) => {
-            assert_eq!(conn_info.remote_peer_id, peer_id);
+        Some(TransportNotification::Disconnected(metadata, actual_reason)) => {
+            assert_eq!(metadata.remote_peer_id, peer_id);
             assert_eq!(actual_reason, reason);
         }
         event => panic!("Expected a Disconnected, received: {:?}", event),

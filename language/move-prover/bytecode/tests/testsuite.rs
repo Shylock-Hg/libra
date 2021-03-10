@@ -9,14 +9,20 @@ use codespan_reporting::term::termcolor::Buffer;
 use bytecode::{
     borrow_analysis::BorrowAnalysisProcessor,
     clean_and_optimize::CleanAndOptimizeProcessor,
+    data_invariant_instrumentation::DataInvariantInstrumentationProcessor,
     eliminate_imm_refs::EliminateImmRefsProcessor,
-    eliminate_mut_refs::EliminateMutRefsProcessor,
     function_target_pipeline::{FunctionTargetPipeline, FunctionTargetsHolder},
+    global_invariant_instrumentation::GlobalInvariantInstrumentationProcessor,
     livevar_analysis::LiveVarAnalysisProcessor,
     memory_instrumentation::MemoryInstrumentationProcessor,
+    mut_ref_instrumentation::MutRefInstrumenter,
+    options::ProverOptions,
     print_targets_for_test,
     reaching_def_analysis::ReachingDefProcessor,
-    spec_instrumentation::SpecInstrumenter,
+    read_write_set_analysis::ReadWriteSetProcessor,
+    spec_instrumentation::SpecInstrumentationProcessor,
+    usage_analysis::UsageProcessor,
+    verification_analysis::VerificationAnalysisProcessor,
 };
 use move_model::{model::GlobalEnv, run_model_builder};
 use move_prover_test_utils::{baseline_test::verify_or_update_baseline, extract_test_directives};
@@ -31,23 +37,23 @@ fn get_tested_transformation_pipeline(
             pipeline.add_processor(EliminateImmRefsProcessor::new());
             Ok(Some(pipeline))
         }
-        "eliminate_mut_refs" => {
+        "mut_ref_instrumentation" => {
             let mut pipeline = FunctionTargetPipeline::default();
             pipeline.add_processor(EliminateImmRefsProcessor::new());
-            pipeline.add_processor(EliminateMutRefsProcessor::new());
+            pipeline.add_processor(MutRefInstrumenter::new());
             Ok(Some(pipeline))
         }
         "reaching_def" => {
             let mut pipeline = FunctionTargetPipeline::default();
             pipeline.add_processor(EliminateImmRefsProcessor::new());
-            pipeline.add_processor(EliminateMutRefsProcessor::new());
+            pipeline.add_processor(MutRefInstrumenter::new());
             pipeline.add_processor(ReachingDefProcessor::new());
             Ok(Some(pipeline))
         }
         "livevar" => {
             let mut pipeline = FunctionTargetPipeline::default();
             pipeline.add_processor(EliminateImmRefsProcessor::new());
-            pipeline.add_processor(EliminateMutRefsProcessor::new());
+            pipeline.add_processor(MutRefInstrumenter::new());
             pipeline.add_processor(ReachingDefProcessor::new());
             pipeline.add_processor(LiveVarAnalysisProcessor::new());
             Ok(Some(pipeline))
@@ -55,29 +61,29 @@ fn get_tested_transformation_pipeline(
         "borrow" => {
             let mut pipeline = FunctionTargetPipeline::default();
             pipeline.add_processor(EliminateImmRefsProcessor::new());
-            pipeline.add_processor(EliminateMutRefsProcessor::new());
+            pipeline.add_processor(MutRefInstrumenter::new());
             pipeline.add_processor(ReachingDefProcessor::new());
             pipeline.add_processor(LiveVarAnalysisProcessor::new());
-            pipeline.add_processor(BorrowAnalysisProcessor::new());
+            pipeline.add_processor(BorrowAnalysisProcessor::new(false));
             Ok(Some(pipeline))
         }
         "memory_instr" => {
             let mut pipeline = FunctionTargetPipeline::default();
             pipeline.add_processor(EliminateImmRefsProcessor::new());
-            pipeline.add_processor(EliminateMutRefsProcessor::new());
+            pipeline.add_processor(MutRefInstrumenter::new());
             pipeline.add_processor(ReachingDefProcessor::new());
             pipeline.add_processor(LiveVarAnalysisProcessor::new());
-            pipeline.add_processor(BorrowAnalysisProcessor::new());
+            pipeline.add_processor(BorrowAnalysisProcessor::new(false));
             pipeline.add_processor(MemoryInstrumentationProcessor::new());
             Ok(Some(pipeline))
         }
         "clean_and_optimize" => {
             let mut pipeline = FunctionTargetPipeline::default();
             pipeline.add_processor(EliminateImmRefsProcessor::new());
-            pipeline.add_processor(EliminateMutRefsProcessor::new());
+            pipeline.add_processor(MutRefInstrumenter::new());
             pipeline.add_processor(ReachingDefProcessor::new());
             pipeline.add_processor(LiveVarAnalysisProcessor::new());
-            pipeline.add_processor(BorrowAnalysisProcessor::new());
+            pipeline.add_processor(BorrowAnalysisProcessor::new(false));
             pipeline.add_processor(MemoryInstrumentationProcessor::new());
             pipeline.add_processor(CleanAndOptimizeProcessor::new());
             Ok(Some(pipeline))
@@ -85,13 +91,52 @@ fn get_tested_transformation_pipeline(
         "spec_instrumentation" => {
             let mut pipeline = FunctionTargetPipeline::default();
             pipeline.add_processor(EliminateImmRefsProcessor::new());
-            pipeline.add_processor(EliminateMutRefsProcessor::new());
+            pipeline.add_processor(MutRefInstrumenter::new());
             pipeline.add_processor(ReachingDefProcessor::new());
             pipeline.add_processor(LiveVarAnalysisProcessor::new());
-            pipeline.add_processor(BorrowAnalysisProcessor::new());
+            pipeline.add_processor(BorrowAnalysisProcessor::new(false));
             pipeline.add_processor(MemoryInstrumentationProcessor::new());
             pipeline.add_processor(CleanAndOptimizeProcessor::new());
-            pipeline.add_processor(SpecInstrumenter::new());
+            pipeline.add_processor(UsageProcessor::new());
+            pipeline.add_processor(VerificationAnalysisProcessor::new());
+            pipeline.add_processor(SpecInstrumentationProcessor::new());
+            Ok(Some(pipeline))
+        }
+        "data_invariant_instrumentation" => {
+            let mut pipeline = FunctionTargetPipeline::default();
+            pipeline.add_processor(EliminateImmRefsProcessor::new());
+            pipeline.add_processor(MutRefInstrumenter::new());
+            pipeline.add_processor(ReachingDefProcessor::new());
+            pipeline.add_processor(LiveVarAnalysisProcessor::new());
+            pipeline.add_processor(BorrowAnalysisProcessor::new(false));
+            pipeline.add_processor(MemoryInstrumentationProcessor::new());
+            pipeline.add_processor(CleanAndOptimizeProcessor::new());
+            pipeline.add_processor(UsageProcessor::new());
+            pipeline.add_processor(VerificationAnalysisProcessor::new());
+            pipeline.add_processor(SpecInstrumentationProcessor::new());
+            pipeline.add_processor(DataInvariantInstrumentationProcessor::new());
+            Ok(Some(pipeline))
+        }
+        // TODO: Make a version for global_invariant_instrumentation_v2?
+        "global_invariant_instrumentation" => {
+            let mut pipeline = FunctionTargetPipeline::default();
+            pipeline.add_processor(EliminateImmRefsProcessor::new());
+            pipeline.add_processor(MutRefInstrumenter::new());
+            pipeline.add_processor(ReachingDefProcessor::new());
+            pipeline.add_processor(LiveVarAnalysisProcessor::new());
+            pipeline.add_processor(BorrowAnalysisProcessor::new(false));
+            pipeline.add_processor(MemoryInstrumentationProcessor::new());
+            pipeline.add_processor(CleanAndOptimizeProcessor::new());
+            pipeline.add_processor(UsageProcessor::new());
+            pipeline.add_processor(VerificationAnalysisProcessor::new());
+            pipeline.add_processor(SpecInstrumentationProcessor::new());
+            pipeline.add_processor(DataInvariantInstrumentationProcessor::new());
+            pipeline.add_processor(GlobalInvariantInstrumentationProcessor::new());
+            Ok(Some(pipeline))
+        }
+        "read_write_set" => {
+            let mut pipeline = FunctionTargetPipeline::default();
+            pipeline.add_processor(Box::new(ReadWriteSetProcessor {}));
             Ok(Some(pipeline))
         }
 
@@ -111,6 +156,11 @@ fn test_runner(path: &Path) -> datatest_stable::Result<()> {
         env.report_errors(&mut error_writer);
         String::from_utf8_lossy(&error_writer.into_inner()).to_string()
     } else {
+        let options = ProverOptions {
+            stable_test_output: true,
+            ..Default::default()
+        };
+        env.set_extension(options);
         let dir_name = path
             .parent()
             .and_then(|p| p.file_name())
