@@ -26,7 +26,7 @@ jobs:
       test-website-build: ${{ steps.website-changes.outputs.changes-found }}
       test-non-rust-lint: ${{ steps.non-rust-lint-changes.outputs.changes-found }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2.3.4
         with:
           # This ensures that the tip of the PR is checked out instead of the merge between the base ref and the tip
           # On `push` this value will be empty and will "do-the-right-thing"
@@ -70,7 +70,7 @@ jobs:
       matrix:
         target_os: [alpine, arch, centos, github]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2.3.4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: ./.github/actions/check-machine
@@ -87,7 +87,7 @@ jobs:
     container:
       image: libra/build_environment:github-1
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2.3.4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: ./.github/actions/check-machine
@@ -115,7 +115,7 @@ jobs:
       volumes:
         - "/home/runner/work/diem/diem:/opt/git/diem"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2.3.4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: ./.github/actions/check-machine
@@ -147,7 +147,7 @@ jobs:
       volumes:
         - "/home/runner/work/diem/diem:/opt/git/diem"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2.3.4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0 #get all the history!!!
@@ -185,7 +185,7 @@ jobs:
       FLAKY_TESTS_FILE: /tmp/failures
       MESSAGE_PAYLOAD_FILE: /tmp/message
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2.3.4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: ./.github/actions/build-setup
@@ -253,7 +253,7 @@ jobs:
       volumes:
         - "/home/runner/work/diem/diem:/opt/git/diem"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2.3.4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: ./.github/actions/check-machine
@@ -285,7 +285,7 @@ jobs:
       volumes:
         - "/home/runner/work/diem/diem:/opt/git/diem"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2.3.4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: ./.github/actions/build-setup
@@ -308,7 +308,7 @@ jobs:
       volumes:
         - "/home/runner/work/diem/diem:/opt/git/diem"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2.3.4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: ./.github/actions/build-setup
